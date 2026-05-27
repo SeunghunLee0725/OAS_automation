@@ -175,7 +175,7 @@ def render_chart(results_df: pd.DataFrame, species: list[str], log_y: bool) -> N
         labels={"time": "Time (s)", "concentration": "Concentration (molecules/cm^3)"},
     )
     fig.update_layout(height=560, margin=dict(l=20, r=20, t=30, b=20))
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 def render_latest_spectrum(output: AnalysisOutput | None) -> None:
@@ -188,7 +188,7 @@ def render_latest_spectrum(output: AnalysisOutput | None) -> None:
             return
         fig = px.line(df, x="wavelength", y=["measured", "fitted"])
         fig.update_layout(height=380, margin=dict(l=20, r=20, t=30, b=20))
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
 
 def main() -> None:
@@ -198,9 +198,9 @@ def main() -> None:
 
     with st.sidebar:
         folder, cross_section_path, settings, scan_interval, stable_seconds, max_files, species, log_y = render_controls()
-        start = st.button("Start monitoring", type="primary", use_container_width=True)
-        stop = st.button("Stop monitoring", use_container_width=True)
-        refresh_once = st.button("Refresh once", use_container_width=True)
+        start = st.button("Start monitoring", type="primary", width="stretch")
+        stop = st.button("Stop monitoring", width="stretch")
+        refresh_once = st.button("Refresh once", width="stretch")
 
     if start:
         st.session_state.monitoring = True
@@ -250,13 +250,13 @@ def main() -> None:
     if not session.results_df.empty:
         with st.expander("Latest concentration table", expanded=True):
             display_cols = ["time", "filename", *[sp for sp in species if sp in session.results_df.columns], "r2"]
-            st.dataframe(session.results_df[display_cols].tail(20), use_container_width=True)
+            st.dataframe(session.results_df[display_cols].tail(20), width="stretch")
 
     render_latest_spectrum(st.session_state.latest_output)
 
     if not session.failed_df.empty:
         with st.expander("Failed files", expanded=False):
-            st.dataframe(session.failed_df.tail(50), use_container_width=True)
+            st.dataframe(session.failed_df.tail(50), width="stretch")
 
     if st.session_state.monitoring:
         time.sleep(scan_interval)

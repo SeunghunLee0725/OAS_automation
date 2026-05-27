@@ -22,6 +22,7 @@ from oas_realtime.analysis import (
     result_to_row,
     spectrum_dataframe,
 )
+from oas_realtime.folder_browser import list_child_directories, parent_directory
 from oas_realtime.session import RealtimeSession
 from oas_realtime.watcher import FileSignature, is_file_stable, scan_absorbance_files
 
@@ -58,6 +59,43 @@ def validate_cross_sections(cross_section_path: Path) -> list[str]:
         if not path.exists():
             missing.append(path.name)
     return missing
+
+
+def render_folder_browser(label: str, state_key: str, default_path: str) -> Path:
+    text_key = f"{state_key}_text"
+    browse_key = f"{state_key}_browse"
+    st.session_state.setdefault(text_key, default_path)
+    st.session_state.setdefault(browse_key, st.session_state[text_key])
+
+    path_text = st.text_input(label, key=text_key)
+    browse_path = Path(st.session_state.get(browse_key, path_text))
+
+    with st.expander(f"Browse {label}", expanded=False):
+        typed_browse = st.text_input("Current folder", value=str(browse_path), key=f"{state_key}_browse_input")
+        browse_path = Path(typed_browse)
+
+        nav_cols = st.columns(2)
+        if nav_cols[0].button("Up", key=f"{state_key}_up", use_container_width=True):
+            st.session_state[browse_key] = str(parent_directory(browse_path))
+            st.rerun()
+        if nav_cols[1].button("Use this folder", key=f"{state_key}_use", use_container_width=True):
+            st.session_state[text_key] = str(browse_path)
+            st.session_state[browse_key] = str(browse_path)
+            st.rerun()
+
+        children = list_child_directories(browse_path)
+        if not browse_path.exists() or not browse_path.is_dir():
+            st.warning("Folder does not exist or is not accessible.")
+        elif not children:
+            st.caption("No child folders.")
+        else:
+            choices = {entry.name: entry.path for entry in children}
+            selected = st.selectbox("Subfolders", list(choices), key=f"{state_key}_children")
+            if st.button("Open selected folder", key=f"{state_key}_open", use_container_width=True):
+                st.session_state[browse_key] = str(choices[selected])
+                st.rerun()
+
+    return Path(st.session_state[text_key])
 
 
 def concentration_long_df(results_df: pd.DataFrame, species: list[str]) -> pd.DataFrame:
@@ -118,17 +156,16 @@ def process_ready_files(
 
 def render_controls() -> tuple[Path, Path, AnalysisSettings, float, float, int, list[str], bool]:
     default_folder = r"C:\Users\user\Desktop\최주연"
-    folder_text = st.text_input("Experiment folder", value=st.session_state.get("folder_text", default_folder))
-    st.session_state.folder_text = folder_text
+    folder = render_folder_browser("Experiment folder", "experiment_folder", default_folder)
 
     if st.session_state.recent_folders:
         selected_recent = st.selectbox("Recent folders", [""] + st.session_state.recent_folders)
         if selected_recent and st.button("Use recent folder"):
-            st.session_state.folder_text = selected_recent
+            st.session_state.experiment_folder_text = selected_recent
+            st.session_state.experiment_folder_browse = selected_recent
             st.rerun()
 
-    cross_section_text = st.text_input("Cross-section folder", value=str(DEFAULT_CROSS_SECTION))
-    cross_section_path = Path(cross_section_text)
+    cross_section_path = render_folder_browser("Cross-section folder", "cross_section_folder", str(DEFAULT_CROSS_SECTION))
 
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -150,7 +187,7 @@ def render_controls() -> tuple[Path, Path, AnalysisSettings, float, float, int, 
         temperature_k=temperature_k,
         saturation_threshold=saturation_threshold,
     )
-    return Path(folder_text), cross_section_path, settings, scan_interval, stable_seconds, int(max_files), species, log_y
+    return folder, cross_section_path, settings, scan_interval, stable_seconds, int(max_files), species, log_y
 
 
 def render_chart(results_df: pd.DataFrame, species: list[str], log_y: bool) -> None:

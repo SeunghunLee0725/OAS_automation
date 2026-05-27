@@ -1,6 +1,7 @@
 from pathlib import Path
+from subprocess import CompletedProcess
 
-from oas_realtime.native_dialog import choose_directory
+from oas_realtime.native_dialog import choose_directory, choose_directory_powershell
 
 
 class FakeRoot:
@@ -35,5 +36,26 @@ def test_choose_directory_returns_none_when_cancelled(tmp_path):
         root_factory=FakeRoot,
         askdirectory=lambda **_kwargs: "",
     )
+
+    assert result is None
+
+
+def test_choose_directory_powershell_returns_stdout_path(tmp_path):
+    selected = tmp_path / "picked"
+    selected.mkdir()
+
+    def fake_runner(_cmd, **_kwargs):
+        return CompletedProcess(args=[], returncode=0, stdout=f"{selected}\n", stderr="")
+
+    result = choose_directory_powershell(tmp_path, "Pick folder", runner=fake_runner)
+
+    assert result == selected
+
+
+def test_choose_directory_powershell_returns_none_on_cancel(tmp_path):
+    def fake_runner(_cmd, **_kwargs):
+        return CompletedProcess(args=[], returncode=0, stdout="", stderr="")
+
+    result = choose_directory_powershell(tmp_path, "Pick folder", runner=fake_runner)
 
     assert result is None

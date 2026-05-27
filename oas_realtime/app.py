@@ -145,7 +145,7 @@ def render_controls() -> tuple[Path, Path, AnalysisSettings, float, float, int, 
         stable_seconds = st.number_input("File stable wait (s)", min_value=0.5, max_value=20.0, value=2.0, step=0.5)
     with col3:
         saturation_threshold = st.number_input("Saturation threshold", min_value=0.1, max_value=10.0, value=2.5, step=0.05)
-        max_files = st.number_input("Max files per refresh", min_value=1, max_value=20, value=1, step=1)
+        max_files = st.number_input("Max files per refresh", min_value=1, max_value=100, value=20, step=1)
 
     species = st.multiselect("Species", DEFAULT_SPECIES, default=DEFAULT_SPECIES)
     log_y = st.toggle("Log y-axis", value=False)

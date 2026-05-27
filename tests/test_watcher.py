@@ -67,3 +67,14 @@ def test_file_stability_requires_same_signature_for_stable_seconds(tmp_path):
     stable, current = is_file_stable(path, previous, stable_seconds=1.0, now=time.time() + 2)
     assert not stable
     assert current.size != previous.size or current.modified_at != previous.modified_at
+
+
+def test_old_file_is_stable_without_previous_signature(tmp_path):
+    path = tmp_path / "1_Absorbance__0__.txt"
+    path.write_text("complete")
+    signature = get_file_signature(path)
+
+    stable, current = is_file_stable(path, previous=None, stable_seconds=1.0, now=signature.modified_at + 2.0)
+
+    assert stable
+    assert current.size == signature.size

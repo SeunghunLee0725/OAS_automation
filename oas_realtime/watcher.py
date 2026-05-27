@@ -70,7 +70,7 @@ def is_file_stable(
 ) -> tuple[bool, FileSignature]:
     current = get_file_signature(path, now=now)
     if previous is None:
-        return False, current
+        return current.observed_at - current.modified_at >= stable_seconds, current
 
     unchanged = current.size == previous.size and current.modified_at == previous.modified_at
     old_enough = current.observed_at - previous.observed_at >= stable_seconds

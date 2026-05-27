@@ -22,8 +22,6 @@ from oas_realtime.analysis import (
     result_to_row,
     spectrum_dataframe,
 )
-from oas_realtime.folder_browser import list_child_directories, parent_directory
-from oas_realtime.native_dialog import choose_directory
 from oas_realtime.session import RealtimeSession
 from oas_realtime.watcher import FileSignature, is_file_stable, scan_absorbance_files
 
@@ -64,62 +62,10 @@ def validate_cross_sections(cross_section_path: Path) -> list[str]:
 
 def render_folder_browser(label: str, state_key: str, default_path: str) -> Path:
     value_key = f"{state_key}_value"
-    text_version_key = f"{state_key}_text_version"
-    browse_key = f"{state_key}_browse"
     st.session_state.setdefault(value_key, default_path)
-    st.session_state.setdefault(text_version_key, 0)
-    st.session_state.setdefault(browse_key, st.session_state[value_key])
-
-    input_key = f"{state_key}_text_{st.session_state[text_version_key]}"
-    input_col, browse_col = st.columns([0.72, 0.28])
-    path_text = input_col.text_input(label, value=st.session_state[value_key], key=input_key)
+    path_text = st.text_input(label, value=st.session_state[value_key], key=f"{state_key}_text")
     st.session_state[value_key] = path_text
-    browse_path = Path(st.session_state.get(browse_key, path_text))
-    if browse_col.button("Browse...", key=f"{state_key}_native", use_container_width=True):
-        try:
-            initial_dir = Path(path_text)
-            if not initial_dir.exists():
-                initial_dir = Path(default_path)
-            selected = choose_directory(initial_dir=initial_dir, title=f"Select {label}")
-            if selected is not None:
-                st.session_state[value_key] = str(selected)
-                st.session_state[browse_key] = str(selected)
-                st.session_state[text_version_key] += 1
-                st.rerun()
-        except Exception as exc:
-            st.warning(f"Windows folder picker could not be opened: {exc}")
-
-    with st.expander(f"Manual Browse {label}", expanded=False):
-        st.caption("Current folder")
-        st.code(str(browse_path), language=None)
-        jump_path = st.text_input("Jump to path", value=str(browse_path), key=f"{state_key}_jump")
-        if st.button("Go to path", key=f"{state_key}_go", use_container_width=True):
-            st.session_state[browse_key] = jump_path
-            st.rerun()
-
-        nav_cols = st.columns(2)
-        if nav_cols[0].button("Up", key=f"{state_key}_up", use_container_width=True):
-            st.session_state[browse_key] = str(parent_directory(browse_path))
-            st.rerun()
-        if nav_cols[1].button("Use this folder", key=f"{state_key}_use", use_container_width=True):
-            st.session_state[value_key] = str(browse_path)
-            st.session_state[browse_key] = str(browse_path)
-            st.session_state[text_version_key] += 1
-            st.rerun()
-
-        children = list_child_directories(browse_path)
-        if not browse_path.exists() or not browse_path.is_dir():
-            st.warning("Folder does not exist or is not accessible.")
-        elif not children:
-            st.caption("No child folders.")
-        else:
-            choices = {entry.name: entry.path for entry in children}
-            selected = st.selectbox("Subfolders", list(choices), key=f"{state_key}_children")
-            if st.button("Open selected folder", key=f"{state_key}_open", use_container_width=True):
-                st.session_state[browse_key] = str(choices[selected])
-                st.rerun()
-
-    return Path(st.session_state[value_key])
+    return Path(path_text)
 
 
 def concentration_long_df(results_df: pd.DataFrame, species: list[str]) -> pd.DataFrame:
@@ -186,8 +132,6 @@ def render_controls() -> tuple[Path, Path, AnalysisSettings, float, float, int, 
         selected_recent = st.selectbox("Recent folders", [""] + st.session_state.recent_folders)
         if selected_recent and st.button("Use recent folder"):
             st.session_state.experiment_folder_value = selected_recent
-            st.session_state.experiment_folder_browse = selected_recent
-            st.session_state.experiment_folder_text_version += 1
             st.rerun()
 
     cross_section_path = render_folder_browser("Cross-section folder", "cross_section_folder", str(DEFAULT_CROSS_SECTION))

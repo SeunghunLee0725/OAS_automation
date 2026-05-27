@@ -23,6 +23,7 @@ from oas_realtime.analysis import (
     spectrum_dataframe,
 )
 from oas_realtime.folder_browser import list_child_directories, parent_directory
+from oas_realtime.native_dialog import choose_directory
 from oas_realtime.session import RealtimeSession
 from oas_realtime.watcher import FileSignature, is_file_stable, scan_absorbance_files
 
@@ -70,11 +71,25 @@ def render_folder_browser(label: str, state_key: str, default_path: str) -> Path
     st.session_state.setdefault(browse_key, st.session_state[value_key])
 
     input_key = f"{state_key}_text_{st.session_state[text_version_key]}"
-    path_text = st.text_input(label, value=st.session_state[value_key], key=input_key)
+    input_col, browse_col = st.columns([0.72, 0.28])
+    path_text = input_col.text_input(label, value=st.session_state[value_key], key=input_key)
     st.session_state[value_key] = path_text
     browse_path = Path(st.session_state.get(browse_key, path_text))
+    if browse_col.button("Browse...", key=f"{state_key}_native", use_container_width=True):
+        try:
+            initial_dir = Path(path_text)
+            if not initial_dir.exists():
+                initial_dir = Path(default_path)
+            selected = choose_directory(initial_dir=initial_dir, title=f"Select {label}")
+            if selected is not None:
+                st.session_state[value_key] = str(selected)
+                st.session_state[browse_key] = str(selected)
+                st.session_state[text_version_key] += 1
+                st.rerun()
+        except Exception as exc:
+            st.warning(f"Windows folder picker could not be opened: {exc}")
 
-    with st.expander(f"Browse {label}", expanded=False):
+    with st.expander(f"Manual Browse {label}", expanded=False):
         st.caption("Current folder")
         st.code(str(browse_path), language=None)
         jump_path = st.text_input("Jump to path", value=str(browse_path), key=f"{state_key}_jump")

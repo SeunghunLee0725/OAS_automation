@@ -62,25 +62,34 @@ def validate_cross_sections(cross_section_path: Path) -> list[str]:
 
 
 def render_folder_browser(label: str, state_key: str, default_path: str) -> Path:
-    text_key = f"{state_key}_text"
+    value_key = f"{state_key}_value"
+    text_version_key = f"{state_key}_text_version"
     browse_key = f"{state_key}_browse"
-    st.session_state.setdefault(text_key, default_path)
-    st.session_state.setdefault(browse_key, st.session_state[text_key])
+    st.session_state.setdefault(value_key, default_path)
+    st.session_state.setdefault(text_version_key, 0)
+    st.session_state.setdefault(browse_key, st.session_state[value_key])
 
-    path_text = st.text_input(label, key=text_key)
+    input_key = f"{state_key}_text_{st.session_state[text_version_key]}"
+    path_text = st.text_input(label, value=st.session_state[value_key], key=input_key)
+    st.session_state[value_key] = path_text
     browse_path = Path(st.session_state.get(browse_key, path_text))
 
     with st.expander(f"Browse {label}", expanded=False):
-        typed_browse = st.text_input("Current folder", value=str(browse_path), key=f"{state_key}_browse_input")
-        browse_path = Path(typed_browse)
+        st.caption("Current folder")
+        st.code(str(browse_path), language=None)
+        jump_path = st.text_input("Jump to path", value=str(browse_path), key=f"{state_key}_jump")
+        if st.button("Go to path", key=f"{state_key}_go", use_container_width=True):
+            st.session_state[browse_key] = jump_path
+            st.rerun()
 
         nav_cols = st.columns(2)
         if nav_cols[0].button("Up", key=f"{state_key}_up", use_container_width=True):
             st.session_state[browse_key] = str(parent_directory(browse_path))
             st.rerun()
         if nav_cols[1].button("Use this folder", key=f"{state_key}_use", use_container_width=True):
-            st.session_state[text_key] = str(browse_path)
+            st.session_state[value_key] = str(browse_path)
             st.session_state[browse_key] = str(browse_path)
+            st.session_state[text_version_key] += 1
             st.rerun()
 
         children = list_child_directories(browse_path)
@@ -95,7 +104,7 @@ def render_folder_browser(label: str, state_key: str, default_path: str) -> Path
                 st.session_state[browse_key] = str(choices[selected])
                 st.rerun()
 
-    return Path(st.session_state[text_key])
+    return Path(st.session_state[value_key])
 
 
 def concentration_long_df(results_df: pd.DataFrame, species: list[str]) -> pd.DataFrame:
@@ -161,8 +170,9 @@ def render_controls() -> tuple[Path, Path, AnalysisSettings, float, float, int, 
     if st.session_state.recent_folders:
         selected_recent = st.selectbox("Recent folders", [""] + st.session_state.recent_folders)
         if selected_recent and st.button("Use recent folder"):
-            st.session_state.experiment_folder_text = selected_recent
+            st.session_state.experiment_folder_value = selected_recent
             st.session_state.experiment_folder_browse = selected_recent
+            st.session_state.experiment_folder_text_version += 1
             st.rerun()
 
     cross_section_path = render_folder_browser("Cross-section folder", "cross_section_folder", str(DEFAULT_CROSS_SECTION))

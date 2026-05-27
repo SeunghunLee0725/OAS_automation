@@ -94,7 +94,7 @@ def process_ready_files(
     latest_output = None
     signatures: dict[str, FileSignature] = st.session_state.file_signatures
 
-    for item in scan_absorbance_files(folder):
+    for item in scan_absorbance_files(folder, include_subfolders=True):
         if item.path.name in session.processed_filenames:
             continue
         if processed >= max_files_per_refresh:

@@ -38,18 +38,23 @@ def is_absorbance_file(path: Path) -> bool:
     )
 
 
-def scan_absorbance_files(folder: Path) -> list[AbsorbanceFile]:
+def scan_absorbance_files(folder: Path, include_subfolders: bool = False) -> list[AbsorbanceFile]:
     folder = Path(folder)
     if not folder.exists() or not folder.is_dir():
         return []
 
     files: list[AbsorbanceFile] = []
-    for path in folder.iterdir():
-        if not is_absorbance_file(path):
-            continue
-        time_point = extract_time_token(path.name)
-        if time_point is not None:
-            files.append(AbsorbanceFile(path=path, time_point=time_point))
+    search_dirs = [folder]
+    if include_subfolders:
+        search_dirs.extend(child for child in folder.iterdir() if child.is_dir())
+
+    for search_dir in search_dirs:
+        for path in search_dir.iterdir():
+            if not is_absorbance_file(path):
+                continue
+            time_point = extract_time_token(path.name)
+            if time_point is not None:
+                files.append(AbsorbanceFile(path=path, time_point=time_point))
     return sorted(files, key=lambda item: (item.time_point, item.path.name))
 
 

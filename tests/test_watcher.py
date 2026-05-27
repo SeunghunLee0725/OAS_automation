@@ -50,6 +50,20 @@ def test_scan_absorbance_files_sorts_by_time(tmp_path):
     ]
 
 
+def test_scan_absorbance_files_can_include_immediate_subfolders(tmp_path):
+    subfolder = tmp_path / "a"
+    subfolder.mkdir()
+    (tmp_path / "i_MAYP1160171__0__13-27-21-830.txt").write_text("intensity")
+    (subfolder / "a_Absorbance__0__13-27-19-847.txt").write_text("absorbance")
+
+    direct_only = scan_absorbance_files(tmp_path)
+    with_subfolders = scan_absorbance_files(tmp_path, include_subfolders=True)
+
+    assert direct_only == []
+    assert len(with_subfolders) == 1
+    assert with_subfolders[0].path == subfolder / "a_Absorbance__0__13-27-19-847.txt"
+
+
 def test_file_stability_requires_same_signature_for_stable_seconds(tmp_path):
     path = tmp_path / "1_Absorbance__0__.txt"
     path.write_text("initial")
